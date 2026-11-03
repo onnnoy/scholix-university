@@ -1,0 +1,3 @@
+-- Intentionally no academic demo rows are seeded.
+-- Add institution-approved development fixtures only in an isolated local
+-- Supabase environment. Never seed fabricated data into production.
