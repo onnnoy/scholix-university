@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
     const sessionMap = new Map((sessions.data ?? []).map((x) => [x.id, x]));
 
     if (resource === "departments") return (departments.data ?? []).filter((department) =>
-      isSuperAdmin || hasGlobalExamScope || departmentScopes.includes(department.id)
+      isSuperAdmin || hasGlobalExamScope || readDepartmentScopes.includes(department.id)
     );
     if (resource === "programs") return (programs.data ?? []).filter((x) => canReadRowDepartment(x.department_id)).map((x) => ({
       ...x, department_name: deptMap.get(x.department_id)?.name ?? "—",
