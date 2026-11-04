@@ -187,8 +187,8 @@ export function TeacherWorkspace() {
             <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6">
               <div>
                 <p className="text-sm text-slate-500">Welcome</p>
-                <h2 className="mt-1 text-2xl font-bold">{data.teacher.full_name}</h2>
-                <p className="mt-1 text-sm text-slate-600">{data.teacher.teacher_number}</p>
+                <h2 className="mt-1 text-2xl font-bold">{data.teacher?.full_name ?? "Teacher"}</h2>
+                <p className="mt-1 text-sm text-slate-600">{data.teacher?.teacher_number ?? "Account details unavailable"}</p>
               </div>
               <button type="button" onClick={() => void load()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 <RefreshCw size={16} aria-hidden="true" />Refresh
