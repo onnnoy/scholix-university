@@ -59,17 +59,25 @@ export function TeacherWorkspace() {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const response = await supabase.functions.invoke("scholix-admin-data", { body: { action: "teacherWorkspace" } });
-    if (response.error) {
-      setError(await getFunctionErrorMessage(response.error));
-    } else if (response.data?.error) {
-      setError(response.data.error);
-    } else {
-      const next = (response.data?.data ?? { teacher: null, offerings: [], legacyOfferings: [] }) as WorkspaceData;
+    try {
+      const response = await supabase.functions.invoke("scholix-admin-data", {
+        body: { action: "teacherWorkspace" },
+      });
+      if (response.error) throw new Error(await getFunctionErrorMessage(response.error));
+      if (response.data?.error) throw new Error(response.data.error);
+
+      const next = (response.data?.data ?? {
+        teacher: null,
+        offerings: [],
+        legacyOfferings: [],
+      }) as WorkspaceData;
       setData(next);
       setSelectedOfferingId((current) => current || next.offerings[0]?.id || "");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load your teaching workspace.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [supabase]);
 
   useEffect(() => { void load(); }, [load]);
@@ -169,7 +177,7 @@ export function TeacherWorkspace() {
             <span className="sr-only">Loading assigned courses and student rosters</span>
             <LoaderCircle size={26} aria-hidden="true" className="animate-spin" />
           </div>
-        ) : !data.teacher ? (
+        ) : !error && !data.teacher ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-8">
             <h2 className="text-lg font-bold">Teacher record not linked</h2>
             <p className="mt-2 text-sm text-slate-600">Ask administration to link your active teacher account.</p>
