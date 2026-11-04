@@ -23,6 +23,7 @@ html {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--background);
   color: var(--foreground);
@@ -55,5 +56,31 @@ button:disabled {
 @media print {
   body {
     background: #ffffff !important;
+  }
+}
+
+
+/* Keyboard focus must remain visible on every interactive control. */
+:focus-visible {
+  outline: 3px solid #047857;
+  outline-offset: 2px;
+}
+
+/* Respect user motion preferences, including loading indicators and transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }
