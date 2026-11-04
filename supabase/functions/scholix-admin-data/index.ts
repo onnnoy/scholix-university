@@ -43,10 +43,12 @@ Deno.serve(async (req) => {
   const isExamController = roleNames.has("exam_controller");
   const isTeacher = roleNames.has("teacher");
   const isStudent = roleNames.has("student");
-  const departmentScopes = [...new Set(activeRoles.filter((row) => ["department_admin", "exam_controller"].includes(row.role) && row.department_id).map((row) => row.department_id as string))];
+  const departmentAdminScopes = [...new Set(activeRoles.filter((row) => row.role === "department_admin" && row.department_id).map((row) => row.department_id as string))];
+  const examinerScopes = [...new Set(activeRoles.filter((row) => row.role === "exam_controller" && row.department_id).map((row) => row.department_id as string))];
+  const readDepartmentScopes = [...new Set([...departmentAdminScopes, ...examinerScopes])];
   const hasGlobalExamScope = activeRoles.some((row) => row.role === "exam_controller" && !row.department_id);
-  const canManageDepartment = (id: string | null | undefined) => isSuperAdmin || Boolean(isDepartmentAdmin && id && departmentScopes.includes(id));
-  const canReadRowDepartment = (id: string | null | undefined) => isSuperAdmin || hasGlobalExamScope || Boolean(id && departmentScopes.includes(id));
+  const canManageDepartment = (id: string | null | undefined) => isSuperAdmin || Boolean(isDepartmentAdmin && id && departmentAdminScopes.includes(id));
+  const canReadRowDepartment = (id: string | null | undefined) => isSuperAdmin || hasGlobalExamScope || Boolean(id && readDepartmentScopes.includes(id));
   const activeTeacher = async () => {
     if (!isTeacher) return null;
     const { data } = await admin.from("teachers").select("id,department_id,account_status").eq("user_id", userId).eq("account_status", "active").maybeSingle();
@@ -563,7 +565,7 @@ Deno.serve(async (req) => {
         const { data: resultRow } = await admin.from("course_results").select("enrollment_id").eq("id", resultId).maybeSingle();
         const { data: enrollment } = resultRow ? await admin.from("course_enrollments").select("course_offering_id").eq("id", resultRow.enrollment_id).maybeSingle() : { data: null };
         const { data: offering } = enrollment ? await admin.from("course_offerings").select("department_id").eq("id", enrollment.course_offering_id).maybeSingle() : { data: null };
-        if (!offering || !departmentScopes.includes(offering.department_id)) return send(403, { error: "You can only approve results for your assigned department." });
+        if (!offering || !examinerScopes.includes(offering.department_id)) return send(403, { error: "You can only approve results for your assigned examination department." });
       }
       const result = await caller.rpc("approve_course_result", { p_course_result_id: resultId });
       if (result.error) return send(400, { error: result.error.message });
