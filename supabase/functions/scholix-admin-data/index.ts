@@ -155,7 +155,13 @@ Deno.serve(async (req) => {
       const course = courseMap.get(offering.course_id), term = termMap.get(offering.academic_term_id);
       const offeringAssessments = assessments.filter((a) => a.course_offering_id === offering.id).map((a) => {
         const category = categoryMap.get(a.category_id);
-        return { ...a, category_label: category?.label ?? "Assessment", weight: category?.weight ?? 0 };
+        return {
+          ...a,
+          assessment_id: a.id,
+          assessment_name: a.name,
+          category_label: category?.label ?? "Assessment",
+          weight: category?.weight ?? 0,
+        };
       });
       const roster = enrollments.filter((en) => en.course_offering_id === offering.id).map((en) => {
         const student = studentMap.get(en.student_id), latest = latestResultMap.get(en.id);
