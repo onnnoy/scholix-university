@@ -25,12 +25,18 @@ Deno.serve(async (req) => {
   const { data: auth, error: authError } = await userClient.auth.getUser();
   if (authError || !auth.user) return json(401, { error: "Please sign in again." });
 
-  const [{ data: role }, { data: profile }] = await Promise.all([
-    userClient.from("user_roles").select("id").eq("user_id", auth.user.id).eq("role", "super_admin").eq("is_active", true).maybeSingle(),
+  const [{ data: roles }, { data: profile }] = await Promise.all([
+    userClient.from("user_roles").select("role,department_id").eq("user_id", auth.user.id).eq("is_active", true),
     userClient.from("profiles").select("is_active,account_status").eq("id", auth.user.id).maybeSingle(),
   ]);
-  if (!role || profile?.is_active !== true || profile.account_status !== "active") {
-    return json(403, { error: "Only an active super administrator can create accounts." });
+  if (profile?.is_active !== true || profile.account_status !== "active") {
+    return json(403, { error: "Your account is inactive. Contact an administrator." });
+  }
+  const activeRoles = roles ?? [];
+  const isSuperAdmin = activeRoles.some((role) => role.role === "super_admin");
+  const departmentAdmin = activeRoles.find((role) => role.role === "department_admin" && role.department_id);
+  if (!isSuperAdmin && !departmentAdmin) {
+    return json(403, { error: "Only a Super Administrator or Department Administrator can create student and teacher accounts." });
   }
 
   const body = await req.json().catch(() => null);
@@ -43,6 +49,9 @@ Deno.serve(async (req) => {
   const departmentId = String(body.departmentId ?? "");
   if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || number.length < 3 || !departmentId) {
     return json(400, { error: "Enter a valid name, email, ID number and department." });
+  }
+  if (!isSuperAdmin && departmentAdmin.department_id !== departmentId) {
+    return json(403, { error: "Department Administrators can create accounts only within their own department." });
   }
 
   const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
