@@ -14,9 +14,9 @@ export type Database = {
   public: {
     Tables: {
       profiles: Table<
-        { id: string; full_name: string | null; email: string | null; account_status: AccountStatus; created_at: string; updated_at: string },
-        { id: string; full_name?: string | null; email?: string | null; account_status?: AccountStatus; created_at?: string; updated_at?: string },
-        { full_name?: string | null; updated_at?: string }
+        { id: string; full_name: string; email: string | null; avatar_url: string | null; is_active: boolean; account_status: AccountStatus; created_at: string; updated_at: string },
+        { id: string; full_name?: string; email?: string | null; avatar_url?: string | null; is_active?: boolean; account_status?: AccountStatus; created_at?: string; updated_at?: string },
+        { full_name?: string; avatar_url?: string | null; is_active?: boolean; account_status?: AccountStatus; updated_at?: string }
       >;
       user_roles: Table<
         { id: string; user_id: string; role: AppRole; department_id: string | null; is_active: boolean; created_at: string },
