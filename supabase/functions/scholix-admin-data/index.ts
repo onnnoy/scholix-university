@@ -237,7 +237,9 @@ Deno.serve(async (req) => {
     const progMap = new Map((programs.data ?? []).map((x) => [x.id, x]));
     const sessionMap = new Map((sessions.data ?? []).map((x) => [x.id, x]));
 
-    if (resource === "departments") return departments.data ?? [];
+    if (resource === "departments") return (departments.data ?? []).filter((department) =>
+      isSuperAdmin || hasGlobalExamScope || departmentScopes.includes(department.id)
+    );
     if (resource === "programs") return (programs.data ?? []).filter((x) => canReadRowDepartment(x.department_id)).map((x) => ({
       ...x, department_name: deptMap.get(x.department_id)?.name ?? "—",
     }));
@@ -466,6 +468,25 @@ Deno.serve(async (req) => {
           const { data: offering } = await admin.from("course_offerings").select("department_id").eq("id", offeringId).maybeSingle();
           departmentId = offering?.department_id ?? null;
         }
+      }
+      if (resource === "offerings") {
+        const { data: current } = id
+          ? await admin.from("course_offerings").select("course_id,program_id,academic_term_id,department_id").eq("id", id).maybeSingle()
+          : { data: null };
+        const courseId = asText(record.course_id) || current?.course_id;
+        const programId = asText(record.program_id) || current?.program_id;
+        const termId = asText(record.academic_term_id) || current?.academic_term_id;
+        const [{ data: course }, { data: program }, { data: term }] = await Promise.all([
+          courseId ? admin.from("courses").select("id,program_id").eq("id", courseId).maybeSingle() : Promise.resolve({ data: null }),
+          programId ? admin.from("programs").select("id,department_id").eq("id", programId).maybeSingle() : Promise.resolve({ data: null }),
+          termId ? admin.from("academic_terms").select("id,program_id").eq("id", termId).maybeSingle() : Promise.resolve({ data: null }),
+        ]);
+        const resolvedDepartmentId = departmentId || current?.department_id || null;
+        if (!course || !program || !term || course.program_id !== program.id ||
+            term.program_id !== program.id || program.department_id !== resolvedDepartmentId) {
+          return send(400, { error: "The course, academic term, program and department must belong to the same academic program." });
+        }
+        departmentId = program.department_id;
       }
       if (!isSuperAdmin && !canManageDepartment(departmentId)) return send(403, { error: "You cannot edit records outside your department." });
       const query = id
