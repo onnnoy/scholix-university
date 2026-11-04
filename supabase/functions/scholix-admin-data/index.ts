@@ -339,18 +339,23 @@ Deno.serve(async (req) => {
       const cids = [...new Set((data ?? []).map((x) => x.category_id))];
       const oids = [...new Set((data ?? []).map((x) => x.course_offering_id))];
       requestStage = "list:assessments:load-categories-and-offerings";
-      const [categories, offerings] = await Promise.all([
-        cids.length ? admin.from("assessment_categories").select("id,label,weight").in("id", cids) : Promise.resolve({ data: [] }),
-        oids.length ? admin.from("course_offerings").select("id,course_id,department_id").in("id", oids) : Promise.resolve({ data: [] }),
+      const [categoryResult, offeringResult] = await Promise.all([
+        cids.length ? admin.from("assessment_categories").select("id,label,weight").in("id", cids) : Promise.resolve(null),
+        oids.length ? admin.from("course_offerings").select("id,course_id,department_id").in("id", oids) : Promise.resolve(null),
       ]);
-      if (categories.error || offerings.error) throw categories.error ?? offerings.error;
-      const courseIds = [...new Set((offerings.data ?? []).map((x) => x.course_id))];
+      if (categoryResult?.error || offeringResult?.error) throw categoryResult?.error ?? offeringResult?.error;
+      const categoryRows = categoryResult?.data ?? [];
+      const offeringRows = offeringResult?.data ?? [];
+      const courseIds = [...new Set(offeringRows.map((x) => x.course_id))];
       requestStage = "list:assessments:load-course-codes";
-      const courses = courseIds.length ? await admin.from("courses").select("id,code").in("id", courseIds) : { data: [] };
-      if (courses.error) throw courses.error;
-      const catMap = new Map((categories.data ?? []).map((x) => [x.id, x]));
-      const offMap = new Map((offerings.data ?? []).map((x) => [x.id, x]));
-      const courseMap = new Map((courses.data ?? []).map((x) => [x.id, x.code]));
+      const courseResult = courseIds.length
+        ? await admin.from("courses").select("id,code").in("id", courseIds)
+        : null;
+      if (courseResult?.error) throw courseResult.error;
+      const courseRows = courseResult?.data ?? [];
+      const catMap = new Map(categoryRows.map((x) => [x.id, x]));
+      const offMap = new Map(offeringRows.map((x) => [x.id, x]));
+      const courseMap = new Map(courseRows.map((x) => [x.id, x.code]));
       requestStage = "list:assessments:map-and-scope-results";
       return (data ?? []).map((x) => {
         const off = offMap.get(x.course_offering_id);
