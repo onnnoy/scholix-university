@@ -1,26 +1,55 @@
 # User Roles and Permissions
 
-| Capability | Super admin | Department admin (scoped) | Teacher (assigned offering) | Exam controller (scoped/global) | Student (self) |
+This document describes the active application and database permission model, not merely the intended future design.
+
+| Capability | Super Administrator | Department Administrator (scoped) | Teacher (assigned offering) | Examination Controller (scoped/global) | Student (self) |
 |---|---:|---:|---:|---:|---:|
-| Read departments / academic sessions | Yes | Yes | Yes | Yes | Yes |
-| Manage departments / global sessions | Yes | No | No | No | No |
-| Manage program/semester structures | Yes | Own department | No | Read scoped data | Read related data |
-| Manage students and teachers | Yes | Own department | No | Read scoped data | Own profile only |
-| Manage courses/offerings/enrollments | Yes | Own department | No | Read scoped data | Read own enrolled offerings |
-| Read assigned offering/roster | Yes | Own department | Assigned only | Scoped | Own enrollment |
-| Enter/update draft marks | Yes | Own department | Assigned offering | No ordinary mark-write grant | No |
-| Configure assessment/grading policy | Central configuration | No in initial migration | No | Read scoped policy | No |
-| Read draft/unpublished results | Yes | Own department | No direct course-result read in initial policy | Own department | No |
-| Read published results | Yes | Own department | No direct course-result read in initial policy | Own department | Own published results |
-| Publish/correct official results | Future authorized RPC | Future review path | No | Future authorized RPC | No |
+| Read academic records | All departments | Own department | Assigned offerings and related roster | Read-only results and related academic context within scope | Own enrollment and published results |
+| Manage departments and global sessions | Yes | No | No | No | No |
+| Manage programs, semesters, terms, courses, and offerings | All departments | Own department | No | No | No |
+| Provision student/teacher accounts | All departments | Own department | No | No | No |
+| Assign teachers to offerings | All departments | Own department | No | No | No |
+| Enter/update draft marks | All departments | Own department | Assigned active offerings only | No | No |
+| Calculate and submit course results | Administrative oversight | No | Assigned active offerings only | No | No |
+| Approve course results | Yes | No | No | Submitted/under-review results within scope | No |
+| Configure global assessment/grading policies | Yes | No | No | Read only | No |
+| Calculate SGPA/CGPA and publish semester results | Not available yet | Not available yet | No | Not available yet | Read published snapshot only |
 | Manage user role assignments | Yes | No | No | No | No |
 
-## Scope rules
+## Responsibility boundaries
 
-- A `super_admin` role is institution-wide.
-- A `department_admin` role requires a department ID and applies only to that department.
-- An `exam_controller` role may be global (NULL department) or department-scoped.
-- A teacher's course access comes from `offering_teachers` plus an active teacher role and active profile/teacher record.
-- A student's ownership is derived from the authenticated profile linked to `students.profile_id`; a browser-supplied student UUID alone is never sufficient.
+- **Super Administrator:** institution-wide setup, grading-policy and assessment-scheme configuration, oversight, account provisioning, and exceptional administration.
+- **Department Administrator:** manages student/teacher records and academic structures within the assigned department; assigns teachers to that department's offerings; can enter or correct draft marks in the same department. Cannot approve course results or change global grading policies.
+- **Teacher:** enters student marks only for active offerings assigned to that teacher. Once all required marks are complete, the teacher runs calculation/submission for that offering. Marks are locked after submission.
+- **Examination Controller:** reviews submitted course results and approves only results within the controller's department. A controller whose role row has a NULL department is global. This role is read/approve, not a general academic-record editor or mark-entry role.
+- **Student:** can access only their own published semester-result snapshots. No student-supplied UUID is accepted as an authorization substitute.
 
-The table above describes the intended target permissions and the current migration baseline. Result approval/publication RPC authorization is not implemented yet, so those operations are not available.
+## Scope and account-state rules
+
+- A super_admin role is institution-wide.
+- A department_admin role requires a department ID and applies only to that department.
+- An exam_controller with a department ID is scoped to that department; an examiner with a NULL department is global.
+- A teacher's course access comes from offering_teachers, combined with an active teacher role, active profile, and active teacher record.
+- All role checks require an active role row and an active profile/account.
+- Server-side route guards, Edge Function authorization, database RPC checks, and Row Level Security must agree. Hiding a menu item is not an authorization control.
+
+## Role-to-route behavior
+
+- Super Administrator sees the institution-wide administration navigation.
+- Department Administrator is routed to the department workspace and sees department-scoped management modules.
+- Examination Controller is routed to result review and sees read/approval modules only.
+- Teacher uses the Teacher portal for assigned-course grading and result submission.
+- Student uses the Student portal for their own published results.
+
+## Demo roles
+
+The current named demo staff role mapping is:
+
+| Account | Active role | Scope |
+|---|---|---|
+| admin@scholix.demo | super_admin | Institution-wide |
+| department@scholix.demo | department_admin | ECE department |
+| controller@scholix.demo | exam_controller | Global |
+| teacher@scholix.demo | teacher | CSE department and assigned offerings |
+
+Demo account passwords are not stored in this file.
