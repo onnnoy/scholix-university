@@ -3,6 +3,7 @@ import {useCallback,useEffect,useMemo,useState} from "react";
 import {AlertCircle,Archive,Check,Clipboard,LoaderCircle,Plus,RefreshCw,Search,ShieldCheck} from "lucide-react";
 import {createClient} from "@/lib/supabase/client";
 import {AdminShell} from "@/components/admin/admin-shell";
+import {getFunctionErrorMessage} from "@/lib/supabase/function-error";
 import type {AccessContext} from "@/lib/auth/access";
 type Row=Record<string,any>;
 type Field={key:string;label:string;type?:string;required?:boolean;options?:string;placeholder?:string};
@@ -59,7 +60,7 @@ export function AdminWorkspace({resource,roles}:{resource:string;roles:AccessCon
  const [showForm,setShowForm]=useState((resource==="students"||resource==="teachers")&&(isSuperAdmin||isDepartmentAdmin)),[form,setForm]=useState<Row>({});
  const [credentials,setCredentials]=useState<Row|null>(null),[selectedOffering,setSelectedOffering]=useState("");
  const [assignOffering,setAssignOffering]=useState(""),[assignTeacher,setAssignTeacher]=useState("");
- const call=useCallback(async(fn:string,body:Row)=>{const r=await supabase.functions.invoke(fn,{body});if(r.error)throw new Error(r.error.message);if(r.data?.error)throw new Error(r.data.error);return r.data as Row;},[supabase]);
+ const call=useCallback(async(fn:string,body:Row)=>{const r=await supabase.functions.invoke(fn,{body});if(r.error)throw new Error(await getFunctionErrorMessage(r.error));if(r.data?.error)throw new Error(r.data.error);return r.data as Row;},[supabase]);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
   try{const pairs=await Promise.all((deps[resource]??[resource]).map(async(k)=>{const r=await call("scholix-admin-data",{action:"list",resource:k});return [k,r.data??[]] as const;}));const next:Record<string,Row[]>={};pairs.forEach(([k,v])=>next[k]=Array.isArray(v)?v:[]);setData(next);}
