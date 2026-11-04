@@ -31,10 +31,10 @@ export async function getAccessContext(): Promise<AccessContext> {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("account_status")
+    .select("is_active,account_status")
     .eq("id", userId)
     .maybeSingle();
-  if (profileError || !profile || profile.account_status !== "active") return { userId, roles: [], demo: false };
+  if (profileError || !profile || profile.is_active !== true || profile.account_status !== "active") return { userId, roles: [], demo: false };
 
   const { data: roleRows, error: rolesError } = await supabase
     .from("user_roles")
