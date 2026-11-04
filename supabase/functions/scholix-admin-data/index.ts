@@ -171,7 +171,11 @@ Deno.serve(async (req) => {
         return {
           enrollment_id: en.id, student_id: en.student_id, student_number: student?.student_number ?? "—",
           student_name: student?.full_name ?? "—", attempt_no: en.attempt_no, is_repeat: en.is_repeat,
-          result_status: latest?.status ?? null, locked,
+          result_status: latest?.status ?? null,
+          total_marks: latest?.total_marks ?? null,
+          letter_grade: latest?.letter_grade ?? null,
+          grade_point: latest?.grade_point ?? null,
+          locked,
           marks: offeringAssessments.map((assessment) => {
             const saved = markMap.get(en.id + ":" + assessment.id);
             return { assessment_id: assessment.id, assessment_name: assessment.name, category_label: assessment.category_label,
