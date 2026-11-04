@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, BookOpen, Check, GraduationCap, LoaderCircle, RefreshCw, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { getFunctionErrorMessage } from "@/lib/supabase/function-error";
 
 type MarkStatus = "pending" | "present" | "absent" | "excused";
 type MarkDraft = { marksObtained: string; status: MarkStatus };
@@ -60,7 +61,7 @@ export function TeacherWorkspace() {
     setError("");
     const response = await supabase.functions.invoke("scholix-admin-data", { body: { action: "teacherWorkspace" } });
     if (response.error) {
-      setError(response.error.message);
+      setError(await getFunctionErrorMessage(response.error));
     } else if (response.data?.error) {
       setError(response.data.error);
     } else {
@@ -106,7 +107,7 @@ export function TeacherWorkspace() {
           status: draft.status,
         },
       });
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) throw new Error(await getFunctionErrorMessage(response.error));
       if (response.data?.error) throw new Error(response.data.error);
       setDrafts((current) => {
         const next = { ...current };
@@ -131,7 +132,7 @@ export function TeacherWorkspace() {
       const response = await supabase.functions.invoke("scholix-admin-data", {
         body: { action: "teacherProcessOffering", offeringId: selectedOffering.id },
       });
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) throw new Error(await getFunctionErrorMessage(response.error));
       if (response.data?.error) throw new Error(response.data.error);
       const processed = Number(response.data?.processed_count ?? 0);
       const skipped = Number(response.data?.skipped_count ?? 0);
