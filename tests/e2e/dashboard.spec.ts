@@ -20,7 +20,7 @@ test("shows the sign-out action and returns to login after signing out", async (
   const signOut = page.getByRole("button", { name: "Sign out" });
   await expect(signOut).toBeVisible();
   await signOut.click();
-  await expect(page).toHaveURL(/\\/login$/);
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in to your account" })).toBeVisible();
 });
 
