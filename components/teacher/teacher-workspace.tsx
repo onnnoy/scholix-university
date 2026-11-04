@@ -24,6 +24,9 @@ type RosterRow = {
   is_repeat: boolean;
   locked: boolean;
   result_status: string | null;
+  total_marks: number | null;
+  letter_grade: string | null;
+  grade_point: number | null;
   marks: AssessmentMark[];
 };
 type Offering = {
@@ -269,6 +272,13 @@ export function TeacherWorkspace() {
                                 <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold capitalize text-emerald-800">{String(student.result_status).replaceAll("_", " ")}</span>
                               ) : (
                                 <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">Draft marks</span>
+                              )}
+                              {student.letter_grade && (
+                                <div className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-700">
+                                  <p><span className="font-semibold">Total:</span> {Number(student.total_marks).toFixed(2)} / 100</p>
+                                  <p><span className="font-semibold">Grade:</span> {student.letter_grade}</p>
+                                  <p><span className="font-semibold">Grade point:</span> {Number(student.grade_point).toFixed(2)}</p>
+                                </div>
                               )}
                               {student.locked && <p className="mt-2 max-w-32 text-xs text-slate-500">Marks are read-only after submission.</p>}
                             </td>
