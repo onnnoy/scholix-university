@@ -327,7 +327,6 @@ Deno.serve(async (req) => {
         return { ...x, department_id: off?.department_id ?? null,
           category_label: catMap.get(x.category_id)?.label ?? "—", course_code: off ? courseMap.get(off.course_id) ?? "—" : "—" };
       }).filter((x) => canReadRowDepartment(x.department_id));
-      });
     }
     if (resource === "marks") {
       const [enrollments, marks, assessments, students, offerings, courses] = await Promise.all([
