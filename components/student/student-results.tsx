@@ -3,12 +3,13 @@ import {useCallback,useEffect,useMemo,useState} from "react";
 import {AlertCircle,Award,BookOpen,GraduationCap,LoaderCircle} from "lucide-react";
 import {createClient} from "@/lib/supabase/client";
 import {SignOutButton} from "@/components/auth/sign-out-button";
+import {getFunctionErrorMessage} from "@/lib/supabase/function-error";
 type Row=Record<string,any>;
 export function StudentResults(){
  const supabase=useMemo(()=>createClient(),[]);
  const [student,setStudent]=useState<Row|null>(null),[results,setResults]=useState<Row[]>([]),[legacy,setLegacy]=useState<Row[]>([]);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
- const load=useCallback(async()=>{setLoading(true);setError("");const r=await supabase.functions.invoke("scholix-admin-data",{body:{action:"myResults"}});if(r.error)setError(r.error.message);else{const d=r.data?.data;setStudent(d?.student??null);setResults(d?.results??[]);setLegacy(d?.legacyResults??[]);}setLoading(false);},[supabase]);
+ const load=useCallback(async()=>{setLoading(true);setError("");const r=await supabase.functions.invoke("scholix-admin-data",{body:{action:"myResults"}});if(r.error)setError(await getFunctionErrorMessage(r.error));else{const d=r.data?.data;setStudent(d?.student??null);setResults(d?.results??[]);setLegacy(d?.legacyResults??[]);}setLoading(false);},[supabase]);
  useEffect(()=>{void load();},[load]);
  return <main className="min-h-screen bg-[#f5f7f6] px-4 py-8 sm:px-8"><div className="mx-auto max-w-6xl">
   <header className="mb-8 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-800"><GraduationCap size={26} aria-hidden="true"/></span><div><p className="text-xs font-bold uppercase tracking-[.15em] text-emerald-700">Scholix student portal</p><h1 className="text-3xl font-bold tracking-tight">My results</h1></div></div><SignOutButton/></header>
