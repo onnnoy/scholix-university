@@ -20,6 +20,8 @@ type RosterRow = {
   enrollment_id: string;
   student_number: string;
   student_name: string;
+  attempt_no: number;
+  is_repeat: boolean;
   locked: boolean;
   result_status: string | null;
   marks: AssessmentMark[];
@@ -30,7 +32,7 @@ type Offering = {
   course_title: string;
   term_name: string;
   session_name: string;
-  section: string;
+  section: string | null;
   assessments: AssessmentMark[];
   roster: RosterRow[];
 };
@@ -203,7 +205,7 @@ export function TeacherWorkspace() {
                       <span className="text-xs font-bold uppercase tracking-wide">Assigned course</span>
                     </div>
                     <h2 className="mt-2 text-xl font-bold">{selectedOffering.course_code} — {selectedOffering.course_title}</h2>
-                    <p className="mt-1 text-sm text-slate-500">{selectedOffering.term_name} · {selectedOffering.session_name} · Section {selectedOffering.section}</p>
+                    <p className="mt-1 text-sm text-slate-500">{selectedOffering.term_name} · {selectedOffering.session_name} · Section {selectedOffering.section ?? "A"}</p>
                   </div>
                   <button type="button" onClick={() => void processOffering()} disabled={saving || !selectedOffering.roster.length} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
                     {saving ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
