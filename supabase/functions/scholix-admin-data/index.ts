@@ -125,18 +125,6 @@ Deno.serve(async (req) => {
       ...oldCourseMap.get(x.course_id), session_name: sessionMap.get(x.session_id) ?? "—",
     }));
     return send(200, { data: { teacher: activeTeacher ?? legacyTeacher.data, offerings: [...modernOfferings, ...legacyOfferings] } });
-    if (links.error) return send(400, { error: links.error.message });
-    const offeringIds = (links.data ?? []).map((x) => x.course_offering_id);
-    const offerings = offeringIds.length
-      ? await admin.from("course_offerings").select("*").in("id", offeringIds)
-      : { data: [], error: null };
-    if (offerings.error) return send(400, { error: offerings.error.message });
-    const courseIds = [...new Set((offerings.data ?? []).map((x) => x.course_id))];
-    const courses = courseIds.length ? await admin.from("courses").select("id,code,title").in("id", courseIds) : { data: [] };
-    const courseMap = new Map((courses.data ?? []).map((x) => [x.id, x]));
-    return send(200, { data: { teacher, offerings: (offerings.data ?? []).map((x) => ({
-      ...x, course_code: courseMap.get(x.course_id)?.code ?? "—", course_title: courseMap.get(x.course_id)?.title ?? "—",
-    })) } });
   }
 
   const [profile, role] = await Promise.all([
