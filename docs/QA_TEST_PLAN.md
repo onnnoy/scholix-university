@@ -19,12 +19,13 @@ The current repository README describes these implemented workflows: administrat
 
 The QA plan tests the implemented behavior and also marks requirement gaps that must not be mistaken for passed functionality.
 
-### Important requirement gaps to resolve before production sign-off
+### Current implementation status and remaining release risks
 
-1. **Role authorization mismatch:** route-level administrator access permits super_admin, department_admin, and exam_controller, but the active scholix-admin-data and account-provisioning functions currently require an active super_admin. Test department-scoped and exam-controller accounts; the current implementation is expected to reject their administrative API requests. The university must approve the permission matrix, then the function authorization must match it.
-2. **Teacher marks workflow:** the active teacher portal currently lists assigned courses. Mark entry is exposed in the administrator workspace, not in the teacher portal. The SRS describes assigned-teacher marks entry. Treat teacher self-service mark entry as a requirement gap until implemented.
-3. **Semester publication workflow:** the administrator results view displays existing course results/approvals and published semester-result snapshots. It does not expose a complete semester aggregation/publication action. Test the read-only behavior, but do not claim end-to-end SGPA/CGPA publication is complete until the publication operation and its permissions exist.
-4. **Institutional policies:** repeated-course, absence, excused-assessment, improvement, credit eligibility, and official rounding rules require institution approval. Tests must use the active database policy fixture and must not invent policy values.
+1. **Role authorization:** the current main-branch UI, Edge Functions, and database policies have been aligned around separate Super Administrator, Department Administrator, Teacher, Examination Controller, and Student responsibilities. The active Supabase functions are scholix-admin-data version 9 and scholix-provision-account version 3. Database role checks require active role/profile/account status; department data is scoped; the Examination Controller has read/approval permissions rather than general write permissions. Run ROLE-01 through ROLE-04 and SEC-03 before release.
+2. **Teacher grading workflow:** the Teacher portal now loads assigned active offerings, enrolled student rosters, assessments, existing marks, and locked result state. It provides per-assessment status/mark entry, validation, save, and Calculate & submit for review. The teacher may only act on active assigned offerings. The source is in main and the admin-data Edge Function is deployed as version 9; the Next.js frontend still requires a successful Vercel build/deployment and end-to-end verification before this can be called live in production.
+3. **Course grading:** the database calculator aggregates each assessment category by obtained/max marks, multiplies by its configured weight, applies configured rounding, and maps the total to exactly one active grade band. The active demo scheme is 10/10/30/50; its current 4.00 grade scale is explicitly illustrative. This is implemented course-level grading, not an approved university-wide grading regulation.
+4. **Semester aggregation/publication:** existing published semester snapshots can be displayed to students. Automated SGPA/CGPA aggregation, semester-batch approval, and publication remain incomplete. Do not claim semester results are generated end to end.
+5. **Institutional policy decisions:** repeated-course/improvement, failed-course contribution to CGPA, absent/excused handling, credit eligibility, withdrawals, and official rounding rules still require university approval. Tests must use the active database policy fixture and must not invent institutional rules.
 
 ## 2. Test environments and roles
 
@@ -122,8 +123,13 @@ For every case, capture the tester, build/commit, browser, test data IDs, actual
 | PORTAL-02 | P0 | Attempt to read draft, submitted, under-review, or unapproved results as a student. | Unpublished results are not returned by UI, Edge Function, RPC, or direct Data API access. |
 | PORTAL-03 | P1 | Verify legacy RPS marks shown for a linked student; compare with source component values. | Legacy marks remain component-level historical data and are not recalculated into modern SGPA/CGPA. |
 | PORTAL-04 | P0 | Sign in as a teacher assigned to Offering A; try to infer/read Offering B and its marks. | The teacher sees only authorized assigned offerings/rosters. |
-| PORTAL-05 | P1 / gap | Attempt marks entry as an assigned teacher in the active teacher portal. | Record as a requirement gap until teacher mark entry is implemented; current portal is an assigned-course view. |
+| PORTAL-05 | P0 | Sign in as the assigned teacher, open an editable assigned offering (for the demo account use CSE-311 or CSE-321), set one student's assessment status to Present, enter a valid mark, save, and refresh. | The mark persists and is shown on reload. A mark outside the assessment maximum, a mismatched assessment/enrollment, an unassigned offering, or a locked result is rejected by the server/database. |
 | PORTAL-06 | P1 | Review reports for counts and status changes after create/deactivate/publish operations. | Dashboard/report counts match database truth and do not include draft/legacy data in the wrong category. |
+| ROLE-01 | P0 | Sign in as Super Administrator, Department Administrator, Examination Controller, Teacher, and Student; inspect direct URL access and visible navigation. | Each role lands in its own workspace and cannot gain permission by changing a URL or hiding/showing a client-side control. |
+| ROLE-02 | P0 | Sign in as a Department Administrator; list and mutate students, teachers, courses, offerings, assessments, and draft marks in the assigned department, then try another department ID. | Own-department actions succeed; cross-department reads/writes and account provisioning are rejected. Global sessions, grading policy, and department administration remain unavailable. |
+| ROLE-03 | P0 | Sign in as a global Examination Controller; inspect submitted course results and approve one. Try to create/edit an academic record, save marks, change grade rules, assign a teacher, or calculate a result. | The controller can read and approve eligible submitted/under-review course results, but every unrelated write/calculation action is denied by Edge Function and RLS/RPC. |
+| ROLE-04 | P0 | Sign in as a teacher assigned to Offering A; save a mark, attempt to access Offering B, then attempt to submit an offering with missing required marks. | The teacher can edit only their assigned active offering. Cross-offering writes are rejected. Processing remains blocked until required marks are complete; submitted marks become locked. |
+| ROLE-05 | P0 | Deactivate an account or role while its session remains open; retry teacher save, result submission, controller approval, or department write. | Active-status checks fail closed; no stale privileged action is accepted. |
 | SEC-01 | P0 | Call every Edge Function without JWT, with expired JWT, and with a valid token for the wrong role. | Requests fail closed with expected 401/403; no data is returned. |
 | SEC-02 | P0 | Verify browser bundle, source maps, network calls, and Vercel environment settings for service-role/secret keys. | No service-role key or secret credential is exposed to the browser or NEXT_PUBLIC_* variables. |
 | SEC-03 | P0 | Attempt cross-department list, update, provisioning, mark entry, and approval operations. | Database and server authorization enforce department scope regardless of UI state. |
@@ -214,6 +220,11 @@ Use automated axe-core scanning plus manual keyboard and screen-reader testing. 
 - Added accessible names to admin search/marks/assignment controls and column scope to the inspected tables.
 - Added a global visible keyboard focus style, forced-colors focus support, dynamic viewport-height support, and reduced-motion handling.
 - Strengthened login focus indication and changed the primary login button/brand text to an accessible dark green.
+- Added role-specific admin routing/navigation for Department Administrators and Examination Controllers.
+- Implemented assigned-teacher roster and marks entry, server-side mark validation, assigned-offering checks, result-state locking, and teacher Calculate & submit.
+- Added Edge Function permission checks for department-scoped data, student/teacher provisioning, mark entry, result submission, and course-result approval.
+- Tightened database helpers/RLS/RPCs so inactive roles fail closed, teachers calculate/submit only their assigned offerings, and Examination Controllers approve but cannot make academic-record or marks changes.
+- Corrected demo role assignments for department@scholix.demo and controller@scholix.demo.
 
 **Remaining manual audit work**
 
@@ -278,4 +289,4 @@ Recommended QA tooling:
 
 **Exit:** all P0 cases pass; all P1 failures are fixed or explicitly accepted with an owner and date; no unresolved critical/high security or data-integrity issue remains; accessibility manual checks are complete; cross-browser/mobile smoke suite passes; performance budgets are met under the agreed profile; and evidence is attached to the release record.
 
-**Release blockers:** role/API permission mismatch; teacher marks-entry gap if required for release; no supported semester aggregate/SGPA/CGPA publication flow; unresolved institutional repeat/absence/excused/rounding policies; any student cross-account data exposure; any unreviewed published-result mutation.
+**Release blockers:** Next.js frontend build/deployment and teacher grading end-to-end verification; no supported semester aggregate/SGPA/CGPA publication flow; unresolved institutional repeat/absence/excused/credit/rounding policies; any cross-department or cross-student data exposure; any unreviewed published-result mutation. The role-specific implementation is present in the current code and Supabase deployment, but it must pass ROLE-01 through ROLE-05 and the release smoke suite.
