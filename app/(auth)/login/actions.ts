@@ -23,9 +23,24 @@ export async function loginAction(_previousState: LoginState, formData: FormData
   }
   if (!hasSupabaseEnv()) return { error: "Supabase is not configured. Add your project URL and publishable key to .env.local." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: "Sign-in failed. Check your email and password." };
+const supabase = await createClient();
+
+const { error } = await supabase.auth.signInWithPassword({
+  email: parsed.data.email.trim().toLowerCase(),
+  password: parsed.data.password,
+});
+
+if (error) {
+  console.error("[Scholix Auth Error]", {
+    code: error.code,
+    status: error.status,
+    message: error.message,
+  });
+
+  return {
+    error: `Authentication error: ${error.code ?? error.status ?? "unknown"} — ${error.message}`,
+  };
+}
 
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
