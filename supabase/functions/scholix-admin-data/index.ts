@@ -10,6 +10,10 @@ const send = (status: number, data: Record<string, unknown>) =>
 const asText = (v: unknown) => String(v ?? "").trim();
 
 Deno.serve(async (req) => {
+  let requestStage = "method-check";
+  let requestAction = "unknown";
+  let requestResource = "unknown";
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return send(405, { error: "Method not allowed." });
 
@@ -27,10 +31,14 @@ Deno.serve(async (req) => {
   if (identityError || !identity.user) return send(401, { error: "Please sign in again." });
 
   const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+  requestStage = "parse-request";
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return send(400, { error: "Invalid request." });
   const action = asText(body.action);
+  requestAction = action || "unknown";
+  requestResource = asText(body.resource) || "unknown";
   const userId = identity.user.id;
+  requestStage = "load-active-role-context";
   const [{ data: profile }, { data: roleRows }] = await Promise.all([
     admin.from("profiles").select("account_status,is_active").eq("id", userId).maybeSingle(),
     admin.from("user_roles").select("role,department_id").eq("user_id", userId).eq("is_active", true),
@@ -239,6 +247,8 @@ Deno.serve(async (req) => {
   if (!(isSuperAdmin || isDepartmentAdmin || isExamController)) return send(403, { error: "Your role does not have access to administrative records." });
 
   const list = async (resource: string): Promise<unknown> => {
+    requestResource = resource;
+    requestStage = `list:${resource}:load-shared-reference-data`;
     const [departments, programs, sessions] = await Promise.all([
       admin.from("departments").select("id,code,name,status").order("code"),
       admin.from("programs").select("id,code,name,department_id,status,duration_years,total_semesters").order("code"),
@@ -323,19 +333,25 @@ Deno.serve(async (req) => {
       }));
     }
     if (resource === "assessments") {
+      requestStage = "list:assessments:load-assessment-rows";
       const { data, error } = await admin.from("assessments").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       const cids = [...new Set((data ?? []).map((x) => x.category_id))];
       const oids = [...new Set((data ?? []).map((x) => x.course_offering_id))];
+      requestStage = "list:assessments:load-categories-and-offerings";
       const [categories, offerings] = await Promise.all([
         cids.length ? admin.from("assessment_categories").select("id,label,weight").in("id", cids) : Promise.resolve({ data: [] }),
         oids.length ? admin.from("course_offerings").select("id,course_id,department_id").in("id", oids) : Promise.resolve({ data: [] }),
       ]);
+      if (categories.error || offerings.error) throw categories.error ?? offerings.error;
       const courseIds = [...new Set((offerings.data ?? []).map((x) => x.course_id))];
+      requestStage = "list:assessments:load-course-codes";
       const courses = courseIds.length ? await admin.from("courses").select("id,code").in("id", courseIds) : { data: [] };
+      if (courses.error) throw courses.error;
       const catMap = new Map((categories.data ?? []).map((x) => [x.id, x]));
       const offMap = new Map((offerings.data ?? []).map((x) => [x.id, x]));
       const courseMap = new Map((courses.data ?? []).map((x) => [x.id, x.code]));
+      requestStage = "list:assessments:map-and-scope-results";
       return (data ?? []).map((x) => {
         const off = offMap.get(x.course_offering_id);
         return { ...x, department_id: off?.department_id ?? null,
@@ -578,6 +594,20 @@ Deno.serve(async (req) => {
 
     return send(400, { error: "Unsupported action." });
   } catch (error) {
-    return send(500, { error: error instanceof Error ? error.message : "Unexpected admin data error." });
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[scholix-admin-data] request failed", {
+      action: requestAction,
+      resource: requestResource,
+      stage: requestStage,
+      message,
+      stack,
+    });
+    return send(500, {
+      error: message || "Unexpected admin data error.",
+      action: requestAction,
+      resource: requestResource,
+      stage: requestStage,
+    });
   }
 });
